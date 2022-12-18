@@ -109,8 +109,6 @@ pub extern "C" fn jetstream_encode(
     }
     let enc = enc_opt.unwrap();
 
-    // let i32s_slice = unsafe { Vec::from_raw_parts(i32s, enc.i32_count, enc.i32_count) };
-    // let q_slice = unsafe { Vec::from_raw_parts(q, enc.i32_count, enc.i32_count) };
     let i32s_slice = unsafe { slice::from_raw_parts(i32s, enc.i32_count) };
     let q_slice = unsafe { slice::from_raw_parts(q, enc.i32_count) };
 
@@ -169,21 +167,10 @@ pub extern "C" fn jetstream_encode_all(
     }
     let enc = enc_opt.unwrap();
 
-    // convert array of DatasetWithQuality "owned" by C code into Go slice
-    // datasetSlice := (*[1 << 30]C.struct_DatasetWithQuality)(unsafe.Pointer(data))[:length:length]
-    // let dataset_slice = unsafe { Vec::from_raw_parts(data, length, length) };
+    // convert array of DatasetWithQuality "owned" by C code into Rust slice
     let dataset_slice = unsafe { slice::from_raw_parts(data, length) };
 
     for i in 0..dataset_slice.len() {
-        // let s = dataset_slice.get(i).unwrap();
-        // similar to above, convert C arrays into Go slices
-        // Int32Slice := (*[1 << 30]int32)(unsafe.Pointer(datasetSlice[s].Int32s))[:enc.Int32Count:enc.Int32Count]
-        // QSlice := (*[1 << 30]uint32)(unsafe.Pointer(datasetSlice[s].Q))[:enc.Int32Count:enc.Int32Count]
-
-        // let i32s_slice =
-        //     unsafe { Vec::from_raw_parts(dataset_slice[i].i32s, enc.i32_count, enc.i32_count) };
-        // let q_slice =
-        //     unsafe { Vec::from_raw_parts(dataset_slice[i].q, enc.i32_count, enc.i32_count) };
         let i32s_slice = unsafe { slice::from_raw_parts(dataset_slice[i].i32s, enc.i32_count) };
         let q_slice = unsafe { slice::from_raw_parts(dataset_slice[i].q, enc.i32_count) };
 
@@ -230,7 +217,6 @@ pub extern "C" fn jetstream_decode(id: *const u8, data: *const u8, length: usize
     let id_bytes: Bytes = id_slice.try_into().unwrap();
     let uuid = Uuid::from_bytes(id_bytes);
 
-    // let dec = find_dec_by_id(uuid);
     let mut list: MutexGuard<HashMap<Uuid, Decoder>> = DEC_LIST.lock().unwrap();
     let dec_opt: Option<&mut Decoder> = list.get_mut(&uuid);
     if dec_opt.is_none() {
@@ -239,11 +225,7 @@ pub extern "C" fn jetstream_decode(id: *const u8, data: *const u8, length: usize
     }
     let dec = dec_opt.unwrap();
 
-    let data_slice = unsafe {
-        // unsafe.Slice((*byte)(data), length)
-        // Vec::from_raw_parts(data, length, length)
-        slice::from_raw_parts(data, length)
-    };
+    let data_slice = unsafe { slice::from_raw_parts(data, length) };
 
     // encode this data sample
     match dec.decode_to_buffer(&data_slice, length) {
@@ -272,7 +254,6 @@ pub extern "C" fn jetstream_get_decoded_index(
     let id_bytes: Bytes = id_slice.try_into().unwrap();
     let uuid = Uuid::from_bytes(id_bytes);
 
-    // let dec = find_dec_by_id(uuid);
     let mut list: MutexGuard<HashMap<Uuid, Decoder>> = DEC_LIST.lock().unwrap();
     let dec_opt: Option<&mut Decoder> = list.get_mut(&uuid);
     if dec_opt.is_none() {
@@ -305,7 +286,7 @@ pub extern "C" fn jetstream_get_decoded_index(
 
 /// Maps decoded Slipstream data into a slice of `JetstreamDatasetWithQuality`, which is allocated
 /// in C code.
-/// This provides an efficient way of copying all decoded data from a message from Go to C.
+/// This provides an efficient way of copying all decoded data from a message from Rust to C.
 #[no_mangle]
 pub extern "C" fn jetstream_get_decoded(
     id: *const u8,
@@ -316,7 +297,6 @@ pub extern "C" fn jetstream_get_decoded(
     let id_bytes: Bytes = id_slice.try_into().unwrap();
     let uuid = Uuid::from_bytes(id_bytes);
 
-    // let dec = find_dec_by_id(uuid);
     let mut list: MutexGuard<HashMap<Uuid, Decoder>> = DEC_LIST.lock().unwrap();
     let dec_opt: Option<&mut Decoder> = list.get_mut(&uuid);
     if dec_opt.is_none() {
@@ -325,21 +305,12 @@ pub extern "C" fn jetstream_get_decoded(
     }
     let dec = dec_opt.unwrap();
 
-    // convert array of DatasetWithQuality "owned" by C code into Go slice
-    // datasetSlice := (*[1 << 30]C.struct_DatasetWithQuality)(unsafe.Pointer(data))[:length:length]
-    // let mut dataset_slice = unsafe { Vec::from_raw_parts(data, length, length) };
+    // convert array of DatasetWithQuality "owned" by C code into Rust slice
     let dataset_slice = unsafe { slice::from_raw_parts_mut(data, length) };
 
     for s in 0..dataset_slice.len() {
         dataset_slice[s].t = dec.out[s].t as u64;
 
-        // similar to above, convert C arrays into Go slices
-        // Int32Slice := (*[1 << 30]int32)(unsafe.Pointer(datasetSlice[s].Int32s))[:dec.Int32Count:dec.Int32Count]
-        // QSlice := (*[1 << 30]uint32)(unsafe.Pointer(datasetSlice[s].Q))[:dec.Int32Count:dec.Int32Count]
-        // let mut i32_slice =
-        //     unsafe { Vec::from_raw_parts(dataset_slice[s].i32s, dec.i32_count, dec.i32_count) };
-        // let mut q_slice =
-        //     unsafe { Vec::from_raw_parts(dataset_slice[s].q, dec.i32_count, dec.i32_count) };
         let i32_slice = unsafe { slice::from_raw_parts_mut(dataset_slice[s].i32s, dec.i32_count) };
         let q_slice = unsafe { slice::from_raw_parts_mut(dataset_slice[s].q, dec.i32_count) };
 

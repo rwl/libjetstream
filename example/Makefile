@@ -1,11 +1,11 @@
 PROFILE = dev
 INC = ..
-LIBDIR = ../target/debug
+LIBDIR = ../target/release
 
 all: example
 
 example: main.cpp $(INC)/jetstream.h $(LIBDIR)/libcjetstream.so
-	$(CXX) -o $@ -g -I$(INC) -L$(LIBDIR) main.cpp -lcjetstream
+	$(CXX) -o $@ -O3 -I$(INC) -L$(LIBDIR) main.cpp -lcjetstream
 	#$(CXX) -o $@ -I$(INC) main.cpp $(LIBDIR)/libcjetstream.so
 
 $(LIBDIR)/libcjetstream.so:
